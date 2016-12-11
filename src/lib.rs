@@ -4,7 +4,7 @@ extern crate libc;
 
 use libc::{c_int, c_uint, c_void, c_double, c_char};
 use std::ops::Drop;
-use std::ffi::CString;
+use std::ffi::{CString, CStr};
 use std::path::{Path, PathBuf};
 use std::collections::HashMap;
 
@@ -45,7 +45,7 @@ pub enum FswError {
   NulError(std::ffi::NulError)
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum FswStatus {
   Ok,
   UnknownError,
@@ -89,7 +89,7 @@ impl From<FSW_STATUS> for FswStatus {
   }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 #[repr(C)]
 pub enum FswMonitorType {
   SystemDefaultMonitorType,
@@ -107,7 +107,7 @@ struct fsw_event_type_filter {
   flag: FswEventFlag
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Clone)]
 #[repr(u32)]
 pub enum FswEventFlag {
   NoOp = 0,
@@ -399,15 +399,15 @@ impl FswSession {
   }
 
   extern fn callback_wrapper(events: *const fsw_cevent, event_num: c_uint, data: *mut c_void) {
-    let events: Vec<fsw_cevent> = unsafe { Vec::from_raw_parts(events as *mut _, event_num as usize, event_num as usize) };
+    let events: &[fsw_cevent] = unsafe { std::slice::from_raw_parts(events, event_num as usize) };
     let mapped_events = events.iter()
       .map(|x| {
-        let path = unsafe { CString::from_raw(x.path as *mut _) }.to_string_lossy().to_string();
-        let flags = unsafe { Vec::from_raw_parts(x.flags as *mut _, x.flags_num as usize, x.flags_num as usize) };
+        let path = unsafe { CStr::from_ptr(x.path) }.to_string_lossy().to_string();
+        let flags = unsafe { std::slice::from_raw_parts(x.flags, x.flags_num as usize) };
         FswCEvent {
           path: path,
           evt_time: x.evt_time,
-          flags: flags
+          flags: flags.to_vec()
         }
       })
       .collect();
