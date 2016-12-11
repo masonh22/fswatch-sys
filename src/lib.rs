@@ -1,3 +1,5 @@
+//! FFI bindings and Rust wrappers for libfswatch.
+
 #![allow(non_camel_case_types)]
 
 extern crate libc;
@@ -39,15 +41,26 @@ const FSW_ERR_MONITOR_ALREADY_RUNNING: FSW_STATUS = (1 << 12);
 const FSW_ERR_UNKNOWN_VALUE: FSW_STATUS = (1 << 13);
 const FSW_ERR_INVALID_PROPERTY: FSW_STATUS = (1 << 14);
 
+/// An error in the library. `FromFsw` denotes an error stemming from fswatch, rather than this
+/// library.
 #[derive(Debug)]
 pub enum FswError {
-  FromFSW(FswStatus),
+  FromFsw(FswStatus),
   NulError(std::ffi::NulError)
 }
 
+/// Status codes from fswatch.
+///
+/// Most operations return a status code, either `Ok` or an error. A successful operation that
+/// returns `Ok` is represented by returning `Ok(T)`, where T is data returned, if any. If no data
+/// is returned, `()` is `T`.
+///
+/// Errors are represented by `Err(FswStatus)`, with the status returned by the operation being
+/// directly available inside the `Err`.
 #[derive(Debug, PartialEq)]
 pub enum FswStatus {
   Ok,
+  /// Occasionally used by the Rust library to denote errors without status codes in fswatch.
   UnknownError,
   SessionUnknown,
   MonitorAlreadyExists,
@@ -66,6 +79,10 @@ pub enum FswStatus {
 }
 
 impl From<FSW_STATUS> for FswStatus {
+  /// Converts from the `FSW_STATUS` type into the Rust `FswStatus`.
+  ///
+  /// This should never need to be used if utilizing the Rust wrappers. If given an invalid code,
+  /// this will default to `UnknownError`.
   fn from(status: FSW_STATUS) -> FswStatus {
     match status {
       FSW_OK => FswStatus::Ok,
@@ -89,6 +106,7 @@ impl From<FSW_STATUS> for FswStatus {
   }
 }
 
+/// The various possible monitors that fswatch can utilize.
 #[derive(Debug, PartialEq)]
 #[repr(C)]
 pub enum FswMonitorType {
@@ -107,6 +125,7 @@ struct fsw_event_type_filter {
   flag: FswEventFlag
 }
 
+/// Flags denoting the operation(s) within an event.
 #[derive(Debug, PartialEq, Clone)]
 #[repr(u32)]
 pub enum FswEventFlag {
@@ -136,6 +155,7 @@ struct fsw_cmonitor_filter {
   extended: bool
 }
 
+/// A monitor filter.
 #[derive(Debug)]
 pub struct FswCMonitorFilter {
   pub text: String,
@@ -155,6 +175,7 @@ impl FswCMonitorFilter {
   }
 }
 
+/// A filter type.
 #[derive(Debug)]
 #[repr(C)]
 pub enum FswFilterType {
@@ -171,10 +192,18 @@ struct fsw_cevent {
   flags_num: c_uint
 }
 
+/// An event from fswatch.
+///
+/// This is most likely what will be used most in this library. No changes done to this struct or
+/// its fields will affect libfswatch. All the data is a copy of the original, to ensure no memory
+/// invalidation in C.
 #[derive(Debug)]
 pub struct FswCEvent {
+  /// The file path for this event.
   pub path: String,
+  /// The time at which this event took place.
   pub evt_time: i64, // FIXME: Tm,
+  /// The flags set on this event.
   pub flags: Vec<FswEventFlag>
 }
 
@@ -215,14 +244,17 @@ extern "C" {
   fn fsw_set_verbose(verbose: bool);
 }
 
+/// Static methods for fswatch.
 pub struct Fsw;
 
 impl Fsw {
+  /// Initialize the library. This must be called once before anything can be done with the library.
   pub fn init_library() -> FswResult<()> {
     let result = unsafe { fsw_init_library() };
     FswSession::map_result((), result)
   }
 
+  /// Gets the last error that occurred in the library.
   pub fn last_error() -> FswStatus {
     let result = unsafe { fsw_last_error() };
     result.into()
@@ -237,6 +269,10 @@ impl Fsw {
   }
 }
 
+/// A builder for `FswSession`.
+///
+/// This builder requires that `paths` and `callback` be supplied in its constructor, as the program
+/// may crash if a session is started without those fields.
 pub struct FswSessionBuilder<F> {
   paths: Vec<PathBuf>,
   callback: Box<F>,
@@ -254,6 +290,7 @@ pub struct FswSessionBuilder<F> {
 impl<F> FswSessionBuilder<F>
   where F: Fn(Vec<FswCEvent>) + 'static
 {
+  /// Make a new builder with the required variables.
   pub fn new<P>(paths: Vec<P>, callback: F) -> Self
     where P: AsRef<Path>
   {
@@ -273,6 +310,9 @@ impl<F> FswSessionBuilder<F>
     }
   }
 
+  /// Build the `FswSession`, applying all specified options before passing ownership to the caller.
+  ///
+  /// If any errors occur while applying options, they are propagted up.
   pub fn build(self) -> FswResult<FswSession> {
     let session = FswSession::new(self.monitor_type)?;
     for path in self.paths {
@@ -306,67 +346,85 @@ impl<F> FswSessionBuilder<F>
     Ok(session)
   }
 
+  /// Set the type of monitor for this session.
   pub fn monitor(mut self, monitor: FswMonitorType) -> Self {
     self.monitor_type = monitor;
     self
   }
 
+  /// Add a custom property to this session. Properties with the same name will keep the last value
+  /// specified.
   pub fn property(mut self, name: &str, value: &str) -> Self {
     self.properties.insert(name.to_owned(), value.to_owned());
     self
   }
 
+  /// Set the overflow property for this session.
   pub fn overflow(mut self, overflow: Option<bool>) -> Self {
     self.overflow = overflow;
     self
   }
 
+  /// Set the latency for this session, for monitors using this property.
   pub fn latency(mut self, latency: Option<c_double>) -> Self {
     self.latency = latency;
     self
   }
 
+  /// Set whether this session should be recursive.
   pub fn recursive(mut self, recursive: Option<bool>) -> Self {
     self.recursive = recursive;
     self
   }
 
+  /// Set whether this session is directory only.
   pub fn directory_only(mut self, directory_only: Option<bool>) -> Self {
     self.directory_only = directory_only;
     self
   }
 
+  /// Set whether this session should follow symlinks.
   pub fn follow_symlinks(mut self, follow_symlinks: Option<bool>) -> Self {
     self.follow_symlinks = follow_symlinks;
     self
   }
 
-  pub fn event_filter(mut self, filter_type: FswEventFlag) -> Self {
+  /// Add an event flag filter for this session.
+  pub fn add_event_filter(mut self, filter_type: FswEventFlag) -> Self {
     self.event_type_filters.push(filter_type);
     self
   }
 
-  pub fn filter(mut self, filter: FswCMonitorFilter) -> Self {
+  /// Add a filter for this session.
+  pub fn add_filter(mut self, filter: FswCMonitorFilter) -> Self {
     self.filters.push(filter);
     self
   }
 }
 
+/// A session in fswatch, revolving around a handle.
+///
+/// Calling `new` creates a new handle, initiating a new session. Options can be set before calling
+/// `start_monitor`.
 pub struct FswSession {
   handle: FSW_HANDLE
 }
 
 impl FswSession {
+  /// Create a new session and handle, using the given monitor type.
   pub fn new(monitor_type: FswMonitorType) -> FswResult<FswSession> {
     let handle = unsafe { fsw_init_session(monitor_type) };
     if handle == FSW_INVALID_HANDLE {
-      return Err(FswError::FromFSW(FswStatus::UnknownError));
+      return Err(FswError::FromFsw(FswStatus::UnknownError));
     }
     Ok(FswSession {
       handle: handle
     })
   }
 
+  /// Create a new session and handle, usin gthe system default monitor type.
+  ///
+  /// This is a convenience method for `FswSession::new(FswMonitorType::SystemDefaultMonitorType)`.
   pub fn default() -> FswResult<FswSession> {
     FswSession::new(FswMonitorType::SystemDefaultMonitorType)
   }
@@ -375,10 +433,11 @@ impl FswSession {
     let result: FswStatus = result.into();
     match result {
       FswStatus::Ok => Ok(ret),
-      _ => Err(FswError::FromFSW(result))
+      _ => Err(FswError::FromFsw(result))
     }
   }
 
+  /// Add a path to watch for this session.
   pub fn add_path<T: AsRef<Path>>(&self, path: T) -> FswResult<()> {
     let path = path.as_ref().to_string_lossy().into_owned();
     let c_path = CString::new(path).map_err(|x| FswError::NulError(x))?;
@@ -386,6 +445,7 @@ impl FswSession {
     FswSession::map_result((), result)
   }
 
+  /// Add a custom property to this session.
   pub fn add_property(&self, name: &str, value: &str) -> FswResult<()> {
     let c_name = CString::new(name).map_err(|x| FswError::NulError(x))?;
     let c_value = CString::new(value).map_err(|x| FswError::NulError(x))?;
@@ -393,6 +453,7 @@ impl FswSession {
     FswSession::map_result((), result)
   }
 
+  /// Set whether to allow overflow for this session.
   pub fn set_allow_overflow(&self, allow_overflow: bool) -> FswResult<()> {
     let result = unsafe { fsw_set_allow_overflow(self.handle, allow_overflow) };
     FswSession::map_result((), result)
@@ -415,6 +476,13 @@ impl FswSession {
     closure(mapped_events);
   }
 
+  /// Set the callback for this session.
+  ///
+  /// The callback will receive a `Vec<FswCEvent>`, which is a copy of the events given by fswatch.
+  ///
+  /// Calling this multiple times will cause this session to use the last callback specified, but
+  /// due to the limited functions in the C API, the previous callbacks will never be freed from
+  /// memory, causing a memory leak.
   pub fn set_callback<F>(&self, callback: F) -> FswResult<()>
     where F: Fn(Vec<FswCEvent>) + 'static
   {
@@ -424,26 +492,31 @@ impl FswSession {
     FswSession::map_result((), result)
   }
 
+  /// Set the latency for this session.
   pub fn set_latency(&self, latency: c_double) -> FswResult<()> {
     let result = unsafe { fsw_set_latency(self.handle, latency) };
     FswSession::map_result((), result)
   }
 
+  /// Set whether this session should be recursive.
   pub fn set_recursive(&self, recursive: bool) -> FswResult<()> {
     let result = unsafe { fsw_set_recursive(self.handle, recursive) };
     FswSession::map_result((), result)
   }
 
+  /// Set whether this session should be directory only.
   pub fn set_directory_only(&self, directory_only: bool) -> FswResult<()> {
     let result = unsafe { fsw_set_directory_only(self.handle, directory_only) };
     FswSession::map_result((), result)
   }
 
+  /// Set whether this session should follow symlinks.
   pub fn set_follow_symlinks(&self, follow_symlinks: bool) -> FswResult<()> {
     let result = unsafe { fsw_set_follow_symlinks(self.handle, follow_symlinks) };
     FswSession::map_result((), result)
   }
 
+  /// Add an event filter for the given event flag.
   pub fn add_event_type_filter(&self, event_type: FswEventFlag) -> FswResult<()> {
     let filter = fsw_event_type_filter {
       flag: event_type
@@ -452,6 +525,7 @@ impl FswSession {
     FswSession::map_result((), result)
   }
 
+  /// Add a filter.
   pub fn add_filter(&self, filter: FswCMonitorFilter) -> FswResult<()> {
     let c_text = CString::new(filter.text).map_err(|x| FswError::NulError(x))?;
     let c_filter = fsw_cmonitor_filter {
@@ -464,11 +538,17 @@ impl FswSession {
     FswSession::map_result((), result)
   }
 
+  /// Start monitoring for this session.
+  ///
+  /// Depending on the monitor you are using, this method may block.
   pub fn start_monitor(&self) -> FswResult<()> {
     let result = unsafe { fsw_start_monitor(self.handle) };
     FswSession::map_result((), result)
   }
 
+  /// Destroy this session, freeing it from memory and invalidating its handle.
+  ///
+  /// This is called automatically when the session goes out of scope.
   pub fn destroy_session(&self) -> FswResult<()> {
     let result = unsafe { fsw_destroy_session(self.handle) };
     FswSession::map_result((), result)
