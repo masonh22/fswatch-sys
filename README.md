@@ -26,3 +26,19 @@ fn main() {
   session.start_monitor().unwrap();
 }
 ```
+
+```rust
+extern crate fswatch_sys;
+
+use fswatch_sys::{Fsw, FswSession, FswSessionBuilder};
+
+fn main() {
+  Fsw::init_library().expect("Could not start fswatch");
+
+  FswSessionBuilder::new(vec!["./"], |events| println!("{:#?}", events))
+    .build()
+    .unwrap()
+    .start_monitor()
+    .unwrap();
+}
+```

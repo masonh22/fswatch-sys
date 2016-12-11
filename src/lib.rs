@@ -5,7 +5,8 @@ extern crate libc;
 use libc::{c_int, c_uint, c_void, c_double, c_char};
 use std::ops::Drop;
 use std::ffi::CString;
-use std::path::Path;
+use std::path::{Path, PathBuf};
+use std::collections::HashMap;
 
 #[cfg(test)]
 mod test;
@@ -233,6 +234,121 @@ impl Fsw {
 
   pub fn set_verbose(verbose: bool) {
     unsafe { fsw_set_verbose(verbose) };
+  }
+}
+
+pub struct FswSessionBuilder<F> {
+  paths: Vec<PathBuf>,
+  callback: Box<F>,
+  monitor_type: FswMonitorType,
+  properties: HashMap<String, String>,
+  overflow: Option<bool>,
+  latency: Option<c_double>,
+  recursive: Option<bool>,
+  directory_only: Option<bool>,
+  follow_symlinks: Option<bool>,
+  event_type_filters: Vec<FswEventFlag>,
+  filters: Vec<FswCMonitorFilter>
+}
+
+impl<F> FswSessionBuilder<F>
+  where F: Fn(Vec<FswCEvent>) + 'static
+{
+  pub fn new<P>(paths: Vec<P>, callback: F) -> Self
+    where P: AsRef<Path>
+  {
+    let paths = paths.iter().map(|x| x.as_ref().to_owned()).collect();
+    FswSessionBuilder {
+      paths: paths,
+      callback: Box::new(callback),
+      monitor_type: FswMonitorType::SystemDefaultMonitorType,
+      properties: Default::default(),
+      overflow: Default::default(),
+      latency: Default::default(),
+      recursive: Default::default(),
+      directory_only: Default::default(),
+      follow_symlinks: Default::default(),
+      event_type_filters: Default::default(),
+      filters: Default::default()
+    }
+  }
+
+  pub fn build(self) -> FswResult<FswSession> {
+    let session = FswSession::new(self.monitor_type)?;
+    for path in self.paths {
+      session.add_path(path)?;
+    }
+    session.set_callback(*self.callback)?;
+    for (name, value) in self.properties {
+      session.add_property(&name, &value)?;
+    }
+    if let Some(overflow) = self.overflow {
+      session.set_allow_overflow(overflow)?;
+    }
+    if let Some(latency) = self.latency {
+      session.set_latency(latency)?;
+    }
+    if let Some(recursive) = self.recursive {
+      session.set_recursive(recursive)?;
+    }
+    if let Some(directory_only) = self.directory_only {
+      session.set_directory_only(directory_only)?;
+    }
+    if let Some(follow_symlinks) = self.follow_symlinks {
+      session.set_follow_symlinks(follow_symlinks)?;
+    }
+    for event_type in self.event_type_filters {
+      session.add_event_type_filter(event_type)?;
+    }
+    for filter in self.filters {
+      session.add_filter(filter)?;
+    }
+    Ok(session)
+  }
+
+  pub fn monitor(mut self, monitor: FswMonitorType) -> Self {
+    self.monitor_type = monitor;
+    self
+  }
+
+  pub fn property(mut self, name: &str, value: &str) -> Self {
+    self.properties.insert(name.to_owned(), value.to_owned());
+    self
+  }
+
+  pub fn overflow(mut self, overflow: Option<bool>) -> Self {
+    self.overflow = overflow;
+    self
+  }
+
+  pub fn latency(mut self, latency: Option<c_double>) -> Self {
+    self.latency = latency;
+    self
+  }
+
+  pub fn recursive(mut self, recursive: Option<bool>) -> Self {
+    self.recursive = recursive;
+    self
+  }
+
+  pub fn directory_only(mut self, directory_only: Option<bool>) -> Self {
+    self.directory_only = directory_only;
+    self
+  }
+
+  pub fn follow_symlinks(mut self, follow_symlinks: Option<bool>) -> Self {
+    self.follow_symlinks = follow_symlinks;
+    self
+  }
+
+  pub fn event_filter(mut self, filter_type: FswEventFlag) -> Self {
+    self.event_type_filters.push(filter_type);
+    self
+  }
+
+  pub fn filter(mut self, filter: FswCMonitorFilter) -> Self {
+    self.filters.push(filter);
+    self
   }
 }
 
