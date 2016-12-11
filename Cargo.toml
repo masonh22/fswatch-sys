@@ -1,7 +1,11 @@
 [package]
 name = "fswatch-sys"
 version = "0.1.0"
+description = "FFI bindings and a Rust wrapper for libfswatch"
 authors = ["Kyle Clemens <me@kyleclemens.com>"]
+repository = "https://github.com/jkcclemens/fswatch-sys"
+readme = "README.md"
+license = "MPL-2.0"
 
 [dependencies]
-libc = "*"
+libc = "0.2"
