@@ -138,10 +138,10 @@ struct fsw_cmonitor_filter {
 
 #[derive(Debug)]
 pub struct FswCMonitorFilter {
-  text: String,
-  filter_type: FswFilterType,
-  case_sensitive: bool,
-  extended: bool
+  pub text: String,
+  pub filter_type: FswFilterType,
+  pub case_sensitive: bool,
+  pub extended: bool
 }
 
 impl FswCMonitorFilter {
@@ -173,9 +173,9 @@ struct fsw_cevent {
 
 #[derive(Debug)]
 pub struct FswCEvent {
-  path: String,
-  evt_time: i64, // FIXME: Tm,
-  flags: Vec<FswEventFlag>
+  pub path: String,
+  pub evt_time: i64, // FIXME: Tm,
+  pub flags: Vec<FswEventFlag>
 }
 
 #[link(name = "fswatch")]
