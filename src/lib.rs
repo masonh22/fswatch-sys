@@ -277,7 +277,7 @@ impl Fsw {
 #[derive(Debug)]
 pub struct FswSessionBuilder<F> {
   paths: Vec<PathBuf>,
-  callback: Box<F>,
+  callback: Option<Box<F>>,
   monitor_type: FswMonitorType,
   properties: HashMap<String, String>,
   overflow: Option<bool>,
@@ -292,14 +292,26 @@ pub struct FswSessionBuilder<F> {
 impl<F> FswSessionBuilder<F>
   where F: Fn(Vec<FswCEvent>) + 'static
 {
+
+  /// Creates an empty builder, not requiring `paths` and `callback` being set.
+  ///
+  /// This is mainly useful when constructing an `FswSession` for use as an iterator.
+  pub fn empty() -> Self {
+    FswSessionBuilder::create(None, None)
+  }
+
   /// Make a new builder with the required variables.
   pub fn new<P>(paths: Vec<P>, callback: F) -> Self
     where P: AsRef<Path>
   {
     let paths = paths.iter().map(|x| x.as_ref().to_owned()).collect();
+    FswSessionBuilder::create(Some(paths), Some(Box::new(callback)))
+  }
+
+  fn create(paths: Option<Vec<PathBuf>>, callback: Option<Box<F>>) -> Self {
     FswSessionBuilder {
-      paths: paths,
-      callback: Box::new(callback),
+      paths: paths.unwrap_or_else(Vec::new),
+      callback: callback,
       monitor_type: FswMonitorType::SystemDefaultMonitorType,
       properties: Default::default(),
       overflow: Default::default(),
@@ -320,7 +332,9 @@ impl<F> FswSessionBuilder<F>
     for path in self.paths {
       session.add_path(path)?;
     }
-    session.set_callback(*self.callback)?;
+    if let Some(callback) = self.callback {
+      session.set_callback(*callback)?;
+    }
     for (name, value) in self.properties {
       session.add_property(&name, &value)?;
     }
@@ -346,6 +360,23 @@ impl<F> FswSessionBuilder<F>
       session.add_filter(filter)?;
     }
     Ok(session)
+  }
+
+  /// Add a path to monitor for this session.
+  pub fn add_path<P>(mut self, path: P) -> Self
+    where P: AsRef<Path>
+  {
+    self.paths.push(path.as_ref().to_owned());
+    self
+  }
+
+  /// Set the callback for this session.
+  ///
+  /// Unlike `set_callback` on `FswSession`, this will *not* cause a memory leak if called more than
+  /// once.
+  pub fn callback(mut self, callback: F) -> Self {
+    self.callback = Some(Box::new(callback));
+    self
   }
 
   /// Set the type of monitor for this session.
