@@ -459,6 +459,16 @@ impl FswSession {
     FswSession::new(FswMonitorType::SystemDefaultMonitorType)
   }
 
+  pub fn builder() -> FswSessionBuilder {
+    FswSessionBuilder::empty()
+  }
+
+  pub fn builder_paths<P>(paths: Vec<P>) -> FswSessionBuilder
+    where P: AsRef<Path>
+  {
+    FswSessionBuilder::new(paths)
+  }
+
   fn map_result<T>(ret: T, result: FSW_STATUS) -> Result<T, FswError> {
     let result: FswStatus = result.into();
     match result {
