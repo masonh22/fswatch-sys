@@ -613,6 +613,7 @@ impl FswSessionIterator {
       Some(s) => s,
       None => return
     };
+    self.started = true;
     std::thread::spawn(move || {
       session.start_monitor().unwrap();
     });
