@@ -35,8 +35,8 @@ use fswatch_sys::{Fsw, FswSessionBuilder};
 fn main() {
   Fsw::init_library().expect("Could not start fswatch");
 
-  FswSessionBuilder::new(vec!["./"], |events| println!("{:#?}", events))
-    .build()
+  FswSessionBuilder::new(vec!["./"])
+    .build_callback(|events| println!("{:#?}", events))
     .unwrap()
     .start_monitor()
     .unwrap();
@@ -51,9 +51,7 @@ use fswatch_sys::{Fsw, FswSession};
 fn main() {
   Fsw::init_library().expect("Could not start fswatch");
 
-  let session = FswSession::default().unwrap();
-  session.add_path("./").unwrap();
-
+  let session = FswSessionBuilder::empty().add_path("./").build().unwrap();
   for event in session {
     println!("{:#?}", event);
   }
