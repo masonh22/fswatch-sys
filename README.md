@@ -21,7 +21,7 @@ fn main() {
     // Prettily print out the vector of events.
     println!("{:#?}", events);
   }).unwrap();
-  // Star the monitor, unwrapping any possible error. This will most likely be a blocking call.
+  // Start the monitor, unwrapping any possible error. This will most likely be a blocking call.
   // See the libfswatch documentation for more information.
   session.start_monitor().unwrap();
 }
@@ -30,7 +30,7 @@ fn main() {
 ```rust
 extern crate fswatch_sys;
 
-use fswatch_sys::{Fsw, FswSession, FswSessionBuilder};
+use fswatch_sys::{Fsw, FswSessionBuilder};
 
 fn main() {
   Fsw::init_library().expect("Could not start fswatch");
@@ -40,5 +40,22 @@ fn main() {
     .unwrap()
     .start_monitor()
     .unwrap();
+}
+```
+
+```rust
+extern crate fswatch_sys;
+
+use fswatch_sys::{Fsw, FswSession};
+
+fn main() {
+  Fsw::init_library().expect("Could not start fswatch");
+
+  let session = FswSession::default().unwrap();
+  session.add_path("./").unwrap();
+
+  for event in session {
+    println!("{:#?}", event);
+  }
 }
 ```

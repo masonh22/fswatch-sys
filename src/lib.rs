@@ -9,6 +9,7 @@ use std::ops::Drop;
 use std::ffi::{CString, CStr};
 use std::path::{Path, PathBuf};
 use std::collections::HashMap;
+use std::sync::mpsc::{Sender, Receiver, channel};
 
 #[cfg(test)]
 mod test;
@@ -555,10 +556,76 @@ impl FswSession {
   }
 }
 
+impl IntoIterator for FswSession {
+  type Item = FswCEvent;
+  type IntoIter = FswSessionIterator;
+
+  fn into_iter(self) -> Self::IntoIter {
+    FswSessionIterator::assume_new(self)
+  }
+}
+
 impl Drop for FswSession {
   fn drop(&mut self) {
-    unsafe {
-      fsw_destroy_session(self.handle);
+    // We ignore the status of destroying this session, as it can be manually destroyed before being
+    // dropped. Even if it couldn't, nothing could be done at this point.
+    let _ = self.destroy_session();
+  }
+}
+
+pub struct FswSessionIterator {
+  session: Option<FswSession>,
+  rx: Receiver<FswCEvent>,
+  started: bool
+}
+
+impl FswSessionIterator {
+  pub fn new(session: FswSession) -> FswResult<Self> {
+    let (tx, rx) = channel();
+    FswSessionIterator::adapt_session(&session, tx)?;
+    Ok(FswSessionIterator::create(session, rx))
+  }
+
+  fn assume_new(session: FswSession) -> Self {
+    let (tx, rx) = channel();
+    let _ = FswSessionIterator::adapt_session(&session, tx);
+    FswSessionIterator::create(session, rx)
+  }
+
+  fn create(session: FswSession, rx: Receiver<FswCEvent>) -> Self {
+    FswSessionIterator {
+      session: Some(session),
+      rx: rx,
+      started: false
     }
+  }
+
+  fn adapt_session(session: &FswSession, tx: Sender<FswCEvent>) -> FswResult<()> {
+    session.set_callback(move |events| {
+      for event in events {
+        tx.send(event).unwrap();
+      }
+    })
+  }
+
+  fn start(&mut self) {
+    let session = match self.session.take() {
+      Some(s) => s,
+      None => return
+    };
+    std::thread::spawn(move || {
+      session.start_monitor().unwrap();
+    });
+  }
+}
+
+impl Iterator for FswSessionIterator {
+  type Item = FswCEvent;
+
+  fn next(&mut self) -> Option<Self::Item> {
+    if !self.started {
+      self.start();
+    }
+    self.rx.recv().ok()
   }
 }
