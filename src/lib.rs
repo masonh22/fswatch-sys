@@ -274,6 +274,7 @@ impl Fsw {
 ///
 /// This builder requires that `paths` and `callback` be supplied in its constructor, as the program
 /// may crash if a session is started without those fields.
+#[derive(Debug)]
 pub struct FswSessionBuilder<F> {
   paths: Vec<PathBuf>,
   callback: Box<F>,
@@ -407,6 +408,7 @@ impl<F> FswSessionBuilder<F>
 ///
 /// Calling `new` creates a new handle, initiating a new session. Options can be set before calling
 /// `start_monitor`.
+#[derive(Debug)]
 pub struct FswSession {
   handle: FSW_HANDLE
 }
@@ -573,6 +575,7 @@ impl Drop for FswSession {
   }
 }
 
+#[derive(Debug)]
 pub struct FswSessionIterator {
   session: Option<FswSession>,
   rx: Receiver<FswCEvent>,
