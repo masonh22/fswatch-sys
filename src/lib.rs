@@ -355,6 +355,10 @@ impl FswSessionBuilder {
     Ok(session)
   }
 
+  /// Build the `FswSession` with a callback, applying all specified options before passing
+  /// ownership to the caller.
+  ///
+  /// If any errors occur while applying options, they are propagted up.
   pub fn build_callback<F>(self, callback: F) -> FswResult<FswSession>
     where F: Fn(Vec<FswCEvent>) + 'static
   {
