@@ -275,9 +275,8 @@ impl Fsw {
 /// This builder requires that `paths` and `callback` be supplied in its constructor, as the program
 /// may crash if a session is started without those fields.
 #[derive(Debug)]
-pub struct FswSessionBuilder<F> {
+pub struct FswSessionBuilder {
   paths: Vec<PathBuf>,
-  callback: Option<Box<F>>,
   monitor_type: FswMonitorType,
   properties: HashMap<String, String>,
   overflow: Option<bool>,
@@ -289,29 +288,26 @@ pub struct FswSessionBuilder<F> {
   filters: Vec<FswCMonitorFilter>
 }
 
-impl<F> FswSessionBuilder<F>
-  where F: Fn(Vec<FswCEvent>) + 'static
-{
+impl FswSessionBuilder {
 
   /// Creates an empty builder, not requiring `paths` and `callback` being set.
   ///
   /// This is mainly useful when constructing an `FswSession` for use as an iterator.
   pub fn empty() -> Self {
-    FswSessionBuilder::create(None, None)
+    FswSessionBuilder::create(None)
   }
 
   /// Make a new builder with the required variables.
-  pub fn new<P>(paths: Vec<P>, callback: F) -> Self
+  pub fn new<P>(paths: Vec<P>) -> Self
     where P: AsRef<Path>
   {
     let paths = paths.iter().map(|x| x.as_ref().to_owned()).collect();
-    FswSessionBuilder::create(Some(paths), Some(Box::new(callback)))
+    FswSessionBuilder::create(Some(paths))
   }
 
-  fn create(paths: Option<Vec<PathBuf>>, callback: Option<Box<F>>) -> Self {
+  fn create(paths: Option<Vec<PathBuf>>) -> Self {
     FswSessionBuilder {
       paths: paths.unwrap_or_else(Vec::new),
-      callback: callback,
       monitor_type: FswMonitorType::SystemDefaultMonitorType,
       properties: Default::default(),
       overflow: Default::default(),
@@ -331,9 +327,6 @@ impl<F> FswSessionBuilder<F>
     let session = FswSession::new(self.monitor_type)?;
     for path in self.paths {
       session.add_path(path)?;
-    }
-    if let Some(callback) = self.callback {
-      session.set_callback(*callback)?;
     }
     for (name, value) in self.properties {
       session.add_property(&name, &value)?;
@@ -362,20 +355,19 @@ impl<F> FswSessionBuilder<F>
     Ok(session)
   }
 
+  pub fn build_callback<F>(self, callback: F) -> FswResult<FswSession>
+    where F: Fn(Vec<FswCEvent>) + 'static
+  {
+    let session = self.build()?;
+    session.set_callback(callback)?;
+    Ok(session)
+  }
+
   /// Add a path to monitor for this session.
   pub fn add_path<P>(mut self, path: P) -> Self
     where P: AsRef<Path>
   {
     self.paths.push(path.as_ref().to_owned());
-    self
-  }
-
-  /// Set the callback for this session.
-  ///
-  /// Unlike `set_callback` on `FswSession`, this will *not* cause a memory leak if called more than
-  /// once.
-  pub fn callback(mut self, callback: F) -> Self {
-    self.callback = Some(Box::new(callback));
     self
   }
 
