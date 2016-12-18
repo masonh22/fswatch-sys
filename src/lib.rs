@@ -451,7 +451,7 @@ impl FswSession {
         }
       })
       .collect();
-    let closure: &Box<Fn(Vec<FswEvent>) + 'static> = unsafe { std::mem::transmute(data) };
+    let closure: &Box<Fn(Vec<FswEvent>) + 'static> = unsafe { &*(data as *const Box<Fn(Vec<FswEvent>) + 'static>) };
     closure(mapped_events);
   }
 
