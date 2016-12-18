@@ -1,3 +1,7 @@
+//! The FFI bindings.
+//!
+//! See the [C API docs](http://emcrisostomo.github.io/fswatch/doc/1.9.3/libfswatch.html/libfswatch_8h.html).
+
 use {FswEventFlag, FswFilterType, FswMonitorType};
 use libc::{c_int, c_uint, c_void, c_double, c_char, time_t};
 
