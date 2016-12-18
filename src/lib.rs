@@ -1,4 +1,4 @@
-//! FFI bindings and Rust wrappers for libfswatch.
+//! FFI bindings and Rust wrappers for [libfswatch](https://github.com/emcrisostomo/fswatch).
 
 #![allow(non_camel_case_types)]
 
@@ -43,8 +43,7 @@ const FSW_ERR_MONITOR_ALREADY_RUNNING: FSW_STATUS = (1 << 12);
 const FSW_ERR_UNKNOWN_VALUE: FSW_STATUS = (1 << 13);
 const FSW_ERR_INVALID_PROPERTY: FSW_STATUS = (1 << 14);
 
-/// An error in the library. `FromFsw` denotes an error stemming from fswatch, rather than this
-/// library.
+/// An error in the library.
 #[derive(Debug)]
 pub enum FswError {
   /// An error from fswatch.
@@ -58,7 +57,7 @@ pub enum FswError {
 /// Status codes from fswatch.
 ///
 /// Most operations return a status code, either `Ok` or an error. A successful operation that
-/// returns `Ok` is represented by returning `Ok(T)`, where T is data returned, if any. If no data
+/// returns `Ok` is represented by returning `Ok(T)`, where `T` is data returned, if any. If no data
 /// is returned, `()` is `T`.
 ///
 /// Errors are represented by `Err(FswStatus)`, with the status returned by the operation being
@@ -279,7 +278,7 @@ impl Fsw {
   }
 }
 
-/// A builder for `FswSession`.
+/// A builder for [`FswSession`](struct.FswSession.html).
 #[derive(Debug)]
 pub struct FswSessionBuilder {
   paths: Vec<PathBuf>,
@@ -439,8 +438,8 @@ impl FswSessionBuilder {
 
 /// A session in fswatch, revolving around a handle.
 ///
-/// Calling `new` creates a new handle, initiating a new session. Options can be set before calling
-/// `start_monitor`.
+/// Calling [`new`](#method.new) creates a new handle, initiating a new session. Options can be set
+/// before calling [`start_monitor`](#method.start_monitor).
 #[derive(Debug)]
 pub struct FswSession {
   handle: FSW_HANDLE,
@@ -534,6 +533,8 @@ impl FswSession {
   ///
   /// The callback will receive a `Vec<FswEvent>`, which is a copy of the events given by fswatch.
   ///
+  /// # Safety
+  ///
   /// Calling this multiple times will cause this session to use the last callback specified, but
   /// due to the limited functions in the C API, the previous callbacks will never be freed from
   /// memory, causing a memory leak.
@@ -602,9 +603,10 @@ impl FswSession {
   ///
   /// # Errors
   ///
-  /// This method will return an error if `set_callback` has not been successfully called or if
-  /// `add_path` has not been successfully called at least once. To start the monitor without these
-  /// checks, use `start_monitor_unchecked`.
+  /// This method will return an error if [`set_callback`](#method.set_callback) has not been
+  /// successfully called or if [`add_path`](#method.add_path) has not been successfully called at
+  /// least once. To start the monitor without these checks, use
+  /// [`start_monitor_unchecked`](#method.start_monitor_unchecked).
   pub fn start_monitor(&self) -> FswResult<()> {
     if !self.callback_set.get() || !self.path_added.get() {
       return Err(FswError::MissingRequiredParameters);
@@ -656,11 +658,13 @@ impl Drop for FswSession {
   }
 }
 
-/// An iterator over the events reported by a `FswSession`.
+/// An iterator over the events reported by a [`FswSession`](struct.FswSession.html).
 ///
-/// This will spawn a new thread and call `start_monitor` on the `FswSession` when `next` is called
-/// for the first time. The iterator will block until the session receives a new event, which is
-/// immediately passed on to a channel to the main thread and returned from the `next` method.
+/// This will spawn a new thread and call
+/// [`start_monitor`](struct.FswSession.html#method.start_monitor) on the
+/// [`FswSession`](struct.FswSession.html) when [`next`](method.next) is called for the first time.
+/// The iterator will block until the session receives a new event, which is immediately passed on
+/// to a channel to the main thread and returned from the `next` method.
 ///
 /// # Panics
 ///
@@ -671,8 +675,8 @@ impl Drop for FswSession {
 /// # Safety
 ///
 /// This iterator sets a callback on the `FswSession` it represents, so in order to prevent memory
-/// leaks (see `set_callback` on `FswSession`), only use this iterator on sessions without callbacks
-/// previously set.
+/// leaks (see [`set_callback`](struct.FswSession.html#method.set_callback)), only use this iterator
+/// on sessions without callbacks previously set.
 #[derive(Debug)]
 pub struct FswSessionIterator {
   session: Option<FswSession>,
