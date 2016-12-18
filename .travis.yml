@@ -1,53 +1,41 @@
 language: rust
 rust:
   - nightly
-
-matrix:
-  include:
-    - os: linux
-      sudo: false
-      dist: trusty
-    - os: osx
+os:
+  - linux
+  - osx
+dist: trusty
+sudo: required
 
 before_install:
   - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then
+      sudo apt-get -qq update &&
+      sudo apt-get install -y kcov &&
       wget https://github.com/emcrisostomo/fswatch/releases/download/1.9.3/fswatch-1.9.3.tar.gz &&
       tar xzf fswatch-1.9.3.tar.gz &&
       cd fswatch-1.9.3 &&
       ./configure &&
       make &&
-      make install;
+      sudo make install &&
+      sudo ldconfig &&
+      cd .. &&
+      rm -rf fswatch-1.9.3;
     fi
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
       brew update &&
-      brew install fswatch
+      brew install fswatch;
     fi
 
 script:
   - cargo test --verbose
-  - cargo test --features use_time
-
-addons:
-  apt:
-    packages:
-      - libcurl4-openssl-dev
-      - libelf-dev
-      - libdw-dev
-      - cmake
-      - gcc
-      - binutils-dev
+  - cargo test --verbose --features use_time
 
 after_success: |
-  wget https://github.com/SimonKagstrom/kcov/archive/master.tar.gz &&
-  tar xzf master.tar.gz &&
-  cd kcov-master &&
-  mkdir build &&
-  cd build &&
-  cmake .. &&
-  make &&
-  sudo make install &&
-  cd ../.. &&
-  rm -rf kcov-master &&
-  for file in target/debug/<PROJECT-NAME>-*; do mkdir -p "target/cov/$(basename $file)"; kcov --exclude-pattern=/.cargo,/usr/lib --verify "target/cov/$(basename $file)" "$file"; done &&
-  bash <(curl -s https://codecov.io/bash) &&
-  echo "Uploaded code coverage"
+  if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then
+    for file in target/debug/fswatch_sys-*; do mkdir -p "target/cov/$(basename $file)"; kcov --exclude-pattern=/.cargo,/usr/lib "target/cov/$(basename $file)" "$file"; done &&
+    bash <(curl -s https://codecov.io/bash) &&
+    echo "Uploaded code coverage";
+  fi
+
+notifications:
+  email: false
