@@ -15,6 +15,7 @@ use std::cell::Cell;
 #[cfg(test)]
 mod test;
 
+/// The FFI bindings.
 pub mod ffi;
 
 type FswResult<T> = Result<T, FswError>;
