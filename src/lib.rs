@@ -164,7 +164,7 @@ struct fsw_cmonitor_filter {
 
 /// A monitor filter.
 #[derive(Debug)]
-pub struct FswCMonitorFilter {
+pub struct FswMonitorFilter {
   /// A regular expression to match paths against.
   pub text: String,
   /// The type of filter.
@@ -174,9 +174,9 @@ pub struct FswCMonitorFilter {
   pub extended: bool
 }
 
-impl FswCMonitorFilter {
+impl FswMonitorFilter {
   pub fn new(text: String, filter_type: FswFilterType, case_sensitive: bool, extended: bool) -> Self {
-    FswCMonitorFilter {
+    FswMonitorFilter {
       text: text,
       filter_type: filter_type,
       case_sensitive: case_sensitive,
@@ -208,7 +208,7 @@ struct fsw_cevent {
 /// its fields will affect libfswatch. All the data is a copy of the original, to ensure no memory
 /// invalidation in C.
 #[derive(Debug)]
-pub struct FswCEvent {
+pub struct FswEvent {
   /// The file path for this event.
   pub path: String,
   /// The time at which this event took place.
@@ -291,7 +291,7 @@ pub struct FswSessionBuilder {
   directory_only: Option<bool>,
   follow_symlinks: Option<bool>,
   event_type_filters: Vec<FswEventFlag>,
-  filters: Vec<FswCMonitorFilter>
+  filters: Vec<FswMonitorFilter>
 }
 
 impl FswSessionBuilder {
@@ -366,7 +366,7 @@ impl FswSessionBuilder {
   ///
   /// If any errors occur while applying options, they are propagted up.
   pub fn build_callback<F>(self, callback: F) -> FswResult<FswSession>
-    where F: Fn(Vec<FswCEvent>) + 'static
+    where F: Fn(Vec<FswEvent>) + 'static
   {
     let session = self.build()?;
     session.set_callback(callback)?;
@@ -431,7 +431,7 @@ impl FswSessionBuilder {
   }
 
   /// Add a filter for this session.
-  pub fn add_filter(mut self, filter: FswCMonitorFilter) -> Self {
+  pub fn add_filter(mut self, filter: FswMonitorFilter) -> Self {
     self.filters.push(filter);
     self
   }
@@ -519,28 +519,28 @@ impl FswSession {
       .map(|x| {
         let path = unsafe { CStr::from_ptr(x.path) }.to_string_lossy().to_string();
         let flags = unsafe { std::slice::from_raw_parts(x.flags, x.flags_num as usize) };
-        FswCEvent {
+        FswEvent {
           path: path,
           evt_time: x.evt_time,
           flags: flags.to_vec()
         }
       })
       .collect();
-    let closure: &Box<Fn(Vec<FswCEvent>) + 'static> = unsafe { std::mem::transmute(data) };
+    let closure: &Box<Fn(Vec<FswEvent>) + 'static> = unsafe { std::mem::transmute(data) };
     closure(mapped_events);
   }
 
   /// Set the callback for this session.
   ///
-  /// The callback will receive a `Vec<FswCEvent>`, which is a copy of the events given by fswatch.
+  /// The callback will receive a `Vec<FswEvent>`, which is a copy of the events given by fswatch.
   ///
   /// Calling this multiple times will cause this session to use the last callback specified, but
   /// due to the limited functions in the C API, the previous callbacks will never be freed from
   /// memory, causing a memory leak.
   pub fn set_callback<F>(&self, callback: F) -> FswResult<()>
-    where F: Fn(Vec<FswCEvent>) + 'static
+    where F: Fn(Vec<FswEvent>) + 'static
   {
-    let cb: Box<Box<Fn(Vec<FswCEvent>) + 'static>> = Box::new(Box::new(callback));
+    let cb: Box<Box<Fn(Vec<FswEvent>) + 'static>> = Box::new(Box::new(callback));
     let raw = Box::into_raw(cb) as *mut _;
     let result = unsafe { fsw_set_callback(self.handle, FswSession::callback_wrapper, raw) };
     let res = FswSession::map_result((), result);
@@ -584,7 +584,7 @@ impl FswSession {
   }
 
   /// Add a filter.
-  pub fn add_filter(&self, filter: FswCMonitorFilter) -> FswResult<()> {
+  pub fn add_filter(&self, filter: FswMonitorFilter) -> FswResult<()> {
     let c_text = CString::new(filter.text).map_err(|x| FswError::NulError(x))?;
     let c_filter = fsw_cmonitor_filter {
       text: c_text.as_ptr(),
@@ -640,7 +640,7 @@ impl FswSession {
 }
 
 impl IntoIterator for FswSession {
-  type Item = FswCEvent;
+  type Item = FswEvent;
   type IntoIter = FswSessionIterator;
 
   fn into_iter(self) -> Self::IntoIter {
@@ -676,7 +676,7 @@ impl Drop for FswSession {
 #[derive(Debug)]
 pub struct FswSessionIterator {
   session: Option<FswSession>,
-  rx: Receiver<FswCEvent>,
+  rx: Receiver<FswEvent>,
   started: bool
 }
 
@@ -693,7 +693,7 @@ impl FswSessionIterator {
     FswSessionIterator::create(session, rx)
   }
 
-  fn create(session: FswSession, rx: Receiver<FswCEvent>) -> Self {
+  fn create(session: FswSession, rx: Receiver<FswEvent>) -> Self {
     FswSessionIterator {
       session: Some(session),
       rx: rx,
@@ -701,7 +701,7 @@ impl FswSessionIterator {
     }
   }
 
-  fn adapt_session(session: &FswSession, tx: Sender<FswCEvent>) -> FswResult<()> {
+  fn adapt_session(session: &FswSession, tx: Sender<FswEvent>) -> FswResult<()> {
     session.set_callback(move |events| {
       for event in events {
         tx.send(event).unwrap();
@@ -722,7 +722,7 @@ impl FswSessionIterator {
 }
 
 impl Iterator for FswSessionIterator {
-  type Item = FswCEvent;
+  type Item = FswEvent;
 
   fn next(&mut self) -> Option<Self::Item> {
     if !self.started {
