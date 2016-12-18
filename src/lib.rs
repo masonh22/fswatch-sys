@@ -194,6 +194,10 @@ impl Fsw {
 }
 
 /// A builder for [`FswSession`](struct.FswSession.html).
+///
+/// This struct saves all the options passed to it by the builder methods, which means it is safe
+/// to call the builder methods multiple times, as nothing will be passed to the C API until
+/// [`build`](#method.build) is called.
 #[derive(Debug)]
 pub struct FswSessionBuilder {
   paths: Vec<PathBuf>,
@@ -210,7 +214,7 @@ pub struct FswSessionBuilder {
 
 impl FswSessionBuilder {
 
-  /// Creates an empty builder, not requiring `paths` and `callback` being set.
+  /// Creates an empty builder, not requiring `paths` to be set.
   ///
   /// This is mainly useful when constructing an `FswSession` for use as an iterator.
   pub fn empty() -> Self {
@@ -242,7 +246,7 @@ impl FswSessionBuilder {
 
   /// Build the `FswSession`, applying all specified options before passing ownership to the caller.
   ///
-  /// If any errors occur while applying options, they are propagted up.
+  /// If any errors occur while applying options, they are propagated up.
   pub fn build(self) -> FswResult<FswSession> {
     let session = FswSession::new(self.monitor_type)?;
     for path in self.paths {
@@ -278,7 +282,7 @@ impl FswSessionBuilder {
   /// Build the `FswSession` with a callback, applying all specified options before passing
   /// ownership to the caller.
   ///
-  /// If any errors occur while applying options, they are propagted up.
+  /// If any errors occur while applying options, they are propagated up.
   pub fn build_callback<F>(self, callback: F) -> FswResult<FswSession>
     where F: Fn(Vec<FswEvent>) + 'static
   {
@@ -383,10 +387,18 @@ impl FswSession {
     FswSession::new(FswMonitorType::SystemDefaultMonitorType)
   }
 
+  /// Create a new empty [`FswSessionBuilder`](struct.FswSessionBuilder.html).
+  ///
+  /// This is a convenience method for
+  /// [`FswSessionBuilder::empty()`](struct.FswSessionBuilder.html#method.empty).
   pub fn builder() -> FswSessionBuilder {
     FswSessionBuilder::empty()
   }
 
+  /// Create a new [`FswSessionBuilder`](struct.FswSessionBuilder.html) with the given paths.
+  ///
+  /// This is a convenience method for
+  /// [`FswSessionBuilder::new(paths)`](struct.FswSessionBuilder.html#method.new).
   pub fn builder_paths<P>(paths: Vec<P>) -> FswSessionBuilder
     where P: AsRef<Path>
   {
