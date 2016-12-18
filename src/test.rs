@@ -1,4 +1,4 @@
-use FswSession;
+use {ffi, FswSession};
 
 fn get_default_session() -> FswSession {
   FswSession::default().unwrap()
@@ -11,11 +11,11 @@ fn create_and_destroy_session() {
     session.handle
   };
   // Check that the handle was created successfully.
-  assert!(handle != ::FSW_INVALID_HANDLE);
+  assert!(handle != ffi::FSW_INVALID_HANDLE);
   // Check that trying to destroy the handle after the session wrapper goes out of scope fails.
   // This should fail because the wrapper going out of scope should automatically destroy the
   // session.
-  assert!(unsafe { ::fsw_destroy_session(handle) } != ::FSW_OK);
+  assert!(unsafe { ffi::fsw_destroy_session(handle) } != ffi::FSW_OK);
 }
 
 #[test]
