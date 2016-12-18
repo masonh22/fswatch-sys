@@ -52,7 +52,7 @@ pub type FSW_CEVENT_CALLBACK = extern fn(events: *const fsw_cevent, event_num: c
 pub const FSW_INVALID_HANDLE: FSW_HANDLE = -1;
 
 pub const FSW_OK: FSW_STATUS = 0;
-pub const FSW_ERR_UNKNOWN_ERROR: FSW_STATUS = (1 << 0);
+pub const FSW_ERR_UNKNOWN_ERROR: FSW_STATUS = 1;
 pub const FSW_ERR_SESSION_UNKNOWN: FSW_STATUS = (1 << 1);
 pub const FSW_ERR_MONITOR_ALREADY_EXISTS: FSW_STATUS = (1 << 2);
 pub const FSW_ERR_MEMORY: FSW_STATUS = (1 << 3);

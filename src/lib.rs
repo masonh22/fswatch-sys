@@ -106,7 +106,7 @@ pub enum FswMonitorType {
 #[repr(u32)]
 pub enum FswEventFlag {
   NoOp = 0,
-  PlatformSpecific = (1 << 0),
+  PlatformSpecific = 1,
   Created = (1 << 1),
   Updated = (1 << 2),
   Removed = (1 << 3),
