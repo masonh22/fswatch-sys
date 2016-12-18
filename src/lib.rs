@@ -662,7 +662,7 @@ impl Drop for FswSession {
 ///
 /// This will spawn a new thread and call
 /// [`start_monitor`](struct.FswSession.html#method.start_monitor) on the
-/// [`FswSession`](struct.FswSession.html) when [`next`](method.next) is called for the first time.
+/// [`FswSession`](struct.FswSession.html) when [`next`](#method.next) is called for the first time.
 /// The iterator will block until the session receives a new event, which is immediately passed on
 /// to a channel to the main thread and returned from the `next` method.
 ///
