@@ -92,13 +92,13 @@ impl From<ffi::FSW_STATUS> for FswStatus {
 #[derive(Debug, PartialEq)]
 #[repr(C)]
 pub enum FswMonitorType {
-  SystemDefaultMonitorType,
-  FSEventsMonitorType,
-  KQueueMonitorType,
-  INotifyMonitorType,
-  WindowsMonitorType,
-  PollMonitorType,
-  FenMonitorType
+  SystemDefault,
+  FSEvents,
+  KQueue,
+  INotify,
+  Windows,
+  Poll,
+  Fen
 }
 
 /// Flags denoting the operation(s) within an event.
@@ -232,7 +232,7 @@ impl FswSessionBuilder {
   fn create(paths: Option<Vec<PathBuf>>) -> Self {
     FswSessionBuilder {
       paths: paths.unwrap_or_else(Vec::new),
-      monitor_type: FswMonitorType::SystemDefaultMonitorType,
+      monitor_type: FswMonitorType::SystemDefault,
       properties: Default::default(),
       overflow: Default::default(),
       latency: Default::default(),
@@ -384,7 +384,7 @@ impl FswSession {
   ///
   /// This is a convenience method for `FswSession::new(FswMonitorType::SystemDefaultMonitorType)`.
   pub fn default() -> FswResult<FswSession> {
-    FswSession::new(FswMonitorType::SystemDefaultMonitorType)
+    FswSession::new(FswMonitorType::SystemDefault)
   }
 
   /// Create a new empty [`FswSessionBuilder`](struct.FswSessionBuilder.html).
