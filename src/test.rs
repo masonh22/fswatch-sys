@@ -43,3 +43,23 @@ fn set_callback() {
     println!("Hi!");
   }).unwrap();
 }
+
+#[test]
+#[should_panic]
+fn start_empty() {
+  get_default_session().start_monitor().unwrap();
+}
+
+#[test]
+fn start_without_callback() {
+  let session = get_default_session();
+  session.add_path("./").unwrap();
+  assert!(session.start_monitor().is_err());
+}
+
+#[test]
+fn start_without_path() {
+  let session = get_default_session();
+  session.set_callback(|_| println!("Hello")).unwrap();
+  assert!(session.start_monitor().is_err());
+}

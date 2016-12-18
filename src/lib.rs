@@ -10,6 +10,7 @@ use std::ffi::{CString, CStr};
 use std::path::{Path, PathBuf};
 use std::collections::HashMap;
 use std::sync::mpsc::{Sender, Receiver, channel};
+use std::cell::Cell;
 
 #[cfg(test)]
 mod test;
@@ -46,8 +47,12 @@ const FSW_ERR_INVALID_PROPERTY: FSW_STATUS = (1 << 14);
 /// library.
 #[derive(Debug)]
 pub enum FswError {
+  /// An error from fswatch.
   FromFsw(FswStatus),
-  NulError(std::ffi::NulError)
+  /// An error encountered when working with C strings.
+  NulError(std::ffi::NulError),
+  /// An error indicating that required parameters were missing.
+  MissingRequiredParameters
 }
 
 /// Status codes from fswatch.
@@ -60,6 +65,7 @@ pub enum FswError {
 /// directly available inside the `Err`.
 #[derive(Debug, PartialEq)]
 pub enum FswStatus {
+  /// No error.
   Ok,
   /// Occasionally used by the Rust library to denote errors without status codes in fswatch.
   UnknownError,
@@ -159,8 +165,11 @@ struct fsw_cmonitor_filter {
 /// A monitor filter.
 #[derive(Debug)]
 pub struct FswCMonitorFilter {
+  /// A regular expression to match paths against.
   pub text: String,
+  /// The type of filter.
   pub filter_type: FswFilterType,
+  /// Whether the filter should be case sensitive.
   pub case_sensitive: bool,
   pub extended: bool
 }
@@ -271,9 +280,6 @@ impl Fsw {
 }
 
 /// A builder for `FswSession`.
-///
-/// This builder requires that `paths` and `callback` be supplied in its constructor, as the program
-/// may crash if a session is started without those fields.
 #[derive(Debug)]
 pub struct FswSessionBuilder {
   paths: Vec<PathBuf>,
@@ -437,7 +443,9 @@ impl FswSessionBuilder {
 /// `start_monitor`.
 #[derive(Debug)]
 pub struct FswSession {
-  handle: FSW_HANDLE
+  handle: FSW_HANDLE,
+  callback_set: Cell<bool>,
+  path_added: Cell<bool>
 }
 
 impl FswSession {
@@ -448,7 +456,9 @@ impl FswSession {
       return Err(FswError::FromFsw(FswStatus::UnknownError));
     }
     Ok(FswSession {
-      handle: handle
+      handle: handle,
+      callback_set: Cell::new(false),
+      path_added: Cell::new(false)
     })
   }
 
@@ -482,7 +492,11 @@ impl FswSession {
     let path = path.as_ref().to_string_lossy().into_owned();
     let c_path = CString::new(path).map_err(|x| FswError::NulError(x))?;
     let result = unsafe { fsw_add_path(self.handle, c_path.as_ptr()) };
-    FswSession::map_result((), result)
+    let res = FswSession::map_result((), result);
+    if res.is_ok() {
+      self.path_added.set(true);
+    }
+    res
   }
 
   /// Add a custom property to this session.
@@ -529,7 +543,11 @@ impl FswSession {
     let cb: Box<Box<Fn(Vec<FswCEvent>) + 'static>> = Box::new(Box::new(callback));
     let raw = Box::into_raw(cb) as *mut _;
     let result = unsafe { fsw_set_callback(self.handle, FswSession::callback_wrapper, raw) };
-    FswSession::map_result((), result)
+    let res = FswSession::map_result((), result);
+    if res.is_ok() {
+      self.callback_set.set(true);
+    }
+    res
   }
 
   /// Set the latency for this session.
@@ -581,7 +599,33 @@ impl FswSession {
   /// Start monitoring for this session.
   ///
   /// Depending on the monitor you are using, this method may block.
+  ///
+  /// # Errors
+  ///
+  /// This method will return an error if `set_callback` has not been successfully called or if
+  /// `add_path` has not been successfully called at least once. To start the monitor without these
+  /// checks, use `start_monitor_unchecked`.
   pub fn start_monitor(&self) -> FswResult<()> {
+    if !self.callback_set.get() || !self.path_added.get() {
+      return Err(FswError::MissingRequiredParameters);
+    }
+    self._start_monitor()
+  }
+
+  /// Start monitoring for this session.
+  ///
+  /// Depending on the monitor you are using, this method may block.
+  ///
+  /// # Safety
+  ///
+  /// This function will cause an illegal memory access or another type of memory error, crashing
+  /// the program, if it is called without a callback or without any paths. As far as I can tell,
+  /// this is a problem in the C API of libfswatch.
+  pub unsafe fn start_monitor_unchecked(&self) -> FswResult<()> {
+    self._start_monitor()
+  }
+
+  fn _start_monitor(&self) -> FswResult<()> {
     let result = unsafe { fsw_start_monitor(self.handle) };
     FswSession::map_result((), result)
   }
@@ -612,6 +656,23 @@ impl Drop for FswSession {
   }
 }
 
+/// An iterator over the events reported by a `FswSession`.
+///
+/// This will spawn a new thread and call `start_monitor` on the `FswSession` when `next` is called
+/// for the first time. The iterator will block until the session receives a new event, which is
+/// immediately passed on to a channel to the main thread and returned from the `next` method.
+///
+/// # Panics
+///
+/// This iterator will start a panic if the `FswSession` it represents does not have at least one
+/// path added to it. This is because the result of `start_monitor` is unwrapped when `next` is
+/// called for the first time.
+///
+/// # Safety
+///
+/// This iterator sets a callback on the `FswSession` it represents, so in order to prevent memory
+/// leaks (see `set_callback` on `FswSession`), only use this iterator on sessions without callbacks
+/// previously set.
 #[derive(Debug)]
 pub struct FswSessionIterator {
   session: Option<FswSession>,
