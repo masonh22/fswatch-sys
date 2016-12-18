@@ -3,6 +3,8 @@
 #![allow(non_camel_case_types)]
 
 extern crate libc;
+#[cfg(feature = "use_time")]
+extern crate time;
 
 use libc::{c_uint, c_void, c_double};
 use std::ops::Drop;
@@ -162,7 +164,10 @@ pub struct FswEvent {
   /// The file path for this event.
   pub path: String,
   /// The time at which this event took place.
-  pub evt_time: i64, // FIXME: Tm,
+  #[cfg(feature = "use_time")]
+  pub evt_time: time::Tm,
+  #[cfg(not(feature = "use_time"))]
+  pub evt_time: i64,
   /// The flags set on this event.
   pub flags: Vec<FswEventFlag>
 }
@@ -444,9 +449,15 @@ impl FswSession {
       .map(|x| {
         let path = unsafe { CStr::from_ptr(x.path) }.to_string_lossy().to_string();
         let flags = unsafe { std::slice::from_raw_parts(x.flags, x.flags_num as usize) };
+        let evt_time = {
+          #[cfg(feature = "use_time")]
+          { time::at(time::Timespec::new(x.evt_time, 0)) }
+          #[cfg(not(feature = "use_time"))]
+          { x.evt_time }
+        };
         FswEvent {
           path: path,
-          evt_time: x.evt_time,
+          evt_time: evt_time,
           flags: flags.to_vec()
         }
       })
