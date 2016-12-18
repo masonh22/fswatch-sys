@@ -415,7 +415,7 @@ impl FswSession {
   /// Add a path to watch for this session.
   pub fn add_path<T: AsRef<Path>>(&self, path: T) -> FswResult<()> {
     let path = path.as_ref().to_string_lossy().into_owned();
-    let c_path = CString::new(path).map_err(|x| FswError::NulError(x))?;
+    let c_path = CString::new(path).map_err(FswError::NulError)?;
     let result = unsafe { ffi::fsw_add_path(self.handle, c_path.as_ptr()) };
     let res = FswSession::map_result((), result);
     if res.is_ok() {
@@ -426,8 +426,8 @@ impl FswSession {
 
   /// Add a custom property to this session.
   pub fn add_property(&self, name: &str, value: &str) -> FswResult<()> {
-    let c_name = CString::new(name).map_err(|x| FswError::NulError(x))?;
-    let c_value = CString::new(value).map_err(|x| FswError::NulError(x))?;
+    let c_name = CString::new(name).map_err(FswError::NulError)?;
+    let c_value = CString::new(value).map_err(FswError::NulError)?;
     let result = unsafe { ffi::fsw_add_property(self.handle, c_name.as_ptr(), c_value.as_ptr()) };
     FswSession::map_result((), result)
   }
@@ -512,7 +512,7 @@ impl FswSession {
 
   /// Add a filter.
   pub fn add_filter(&self, filter: FswMonitorFilter) -> FswResult<()> {
-    let c_text = CString::new(filter.text).map_err(|x| FswError::NulError(x))?;
+    let c_text = CString::new(filter.text).map_err(FswError::NulError)?;
     let c_filter = ffi::fsw_cmonitor_filter {
       text: c_text.as_ptr(),
       filter_type: filter.filter_type,
