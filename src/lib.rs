@@ -165,9 +165,9 @@ pub struct FswEvent {
   pub path: String,
   /// The time at which this event took place.
   #[cfg(feature = "use_time")]
-  pub evt_time: time::Tm,
+  pub time: time::Tm,
   #[cfg(not(feature = "use_time"))]
-  pub evt_time: i64,
+  pub time: i64,
   /// The flags set on this event.
   pub flags: Vec<FswEventFlag>
 }
@@ -449,7 +449,7 @@ impl FswSession {
       .map(|x| {
         let path = unsafe { CStr::from_ptr(x.path) }.to_string_lossy().to_string();
         let flags = unsafe { std::slice::from_raw_parts(x.flags, x.flags_num as usize) };
-        let evt_time = {
+        let time = {
           #[cfg(feature = "use_time")]
           { time::at(time::Timespec::new(x.evt_time, 0)) }
           #[cfg(not(feature = "use_time"))]
@@ -457,7 +457,7 @@ impl FswSession {
         };
         FswEvent {
           path: path,
-          evt_time: evt_time,
+          time: time,
           flags: flags.to_vec()
         }
       })
