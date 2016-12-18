@@ -68,7 +68,6 @@ impl From<ffi::FSW_STATUS> for FswStatus {
   fn from(status: ffi::FSW_STATUS) -> FswStatus {
     match status {
       ffi::FSW_OK => FswStatus::Ok,
-      ffi::FSW_ERR_UNKNOWN_ERROR => FswStatus::UnknownError,
       ffi::FSW_ERR_SESSION_UNKNOWN => FswStatus::SessionUnknown,
       ffi::FSW_ERR_MONITOR_ALREADY_EXISTS => FswStatus::MonitorAlreadyExists,
       ffi::FSW_ERR_MEMORY => FswStatus::Memory,
@@ -83,7 +82,7 @@ impl From<ffi::FSW_STATUS> for FswStatus {
       ffi::FSW_ERR_MONITOR_ALREADY_RUNNING => FswStatus::MonitorAlreadyRunning,
       ffi::FSW_ERR_UNKNOWN_VALUE => FswStatus::UnknownValue,
       ffi::FSW_ERR_INVALID_PROPERTY => FswStatus::InvalidProprety,
-      _ => FswStatus::UnknownError
+      ffi::FSW_ERR_UNKNOWN_ERROR | _ => FswStatus::UnknownError
     }
   }
 }
