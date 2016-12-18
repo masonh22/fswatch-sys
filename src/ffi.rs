@@ -41,7 +41,7 @@ extern "C" {
 pub type FSW_STATUS = c_int;
 // type FSW_HANDLE = c_uint;
 // Fun story here. FSW_HANDLE is defined as an unsigned int, but it can return a signed int,
-// FSW_INVALID_HANDLE, which is -1. So, we're calling FSW_HANDLE c_int, not c_unit.
+// FSW_INVALID_HANDLE, which is -1. So, we're calling FSW_HANDLE c_int, not c_uint.
 pub type FSW_HANDLE = c_int;
 pub type FSW_CEVENT_CALLBACK = extern fn(events: *const fsw_cevent, event_num: c_uint, data: *mut c_void);
 
