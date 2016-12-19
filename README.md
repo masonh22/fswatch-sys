@@ -52,7 +52,7 @@ use fswatch_sys::{Fsw, FswSession};
 fn main() {
   Fsw::init_library().expect("Could not start fswatch");
 
-  let session = FswSessionBuilder::empty().add_path("./").build().unwrap();
+  let session = FswSession::builder().add_path("./").build().unwrap();
   for event in session {
     println!("{:#?}", event);
   }
