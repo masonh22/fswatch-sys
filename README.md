@@ -1,4 +1,5 @@
 # fswatch-sys
+[![Travis](https://img.shields.io/travis/jkcclemens/fswatch-sys.svg)](https://travis-ci.org/jkcclemens/fswatch-sys) [![Crates.io](https://img.shields.io/crates/v/fswatch-sys.svg)](https://crates.io/crates/fswatch-sys)
 
 This is a Rust crate to integrate with the C API of
 [`libfswatch`](https://github.com/emcrisostomo/fswatch).
