@@ -1,5 +1,6 @@
 # fswatch-sys
 [![Travis](https://img.shields.io/travis/jkcclemens/fswatch-sys.svg)](https://travis-ci.org/jkcclemens/fswatch-sys)
+[![Codecov](https://img.shields.io/codecov/c/github/jkcclemens/fswatch-sys.svg)](https://codecov.io/gh/jkcclemens/fswatch-sys)
 [![Crates.io](https://img.shields.io/crates/v/fswatch-sys.svg)](https://crates.io/crates/fswatch-sys)
 [![Docs.rs](https://img.shields.io/badge/docs-auto-blue.svg)](https://docs.rs/crate/fswatch-sys)
 
