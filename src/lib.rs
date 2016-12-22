@@ -22,7 +22,7 @@ pub mod ffi;
 type FswResult<T> = Result<T, FswError>;
 
 /// An error in the library.
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum FswError {
   /// An error from fswatch.
   FromFsw(FswStatus),
