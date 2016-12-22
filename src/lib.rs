@@ -12,7 +12,7 @@ use libc::{c_int, c_uint, c_void, c_double, c_char, time_t};
 extern "C" {
   pub fn fsw_init_library() -> FSW_STATUS;
 
-  pub fn fsw_init_session(monitor_type: FswMonitorType) -> FSW_HANDLE;
+  pub fn fsw_init_session(monitor_type: fsw_monitor_type) -> FSW_HANDLE;
 
   pub fn fsw_add_path(handle: FSW_HANDLE, path: *const c_char) -> FSW_STATUS;
 
@@ -73,13 +73,13 @@ pub const FSW_ERR_INVALID_PROPERTY: FSW_STATUS = (1 << 14);
 
 #[repr(C)]
 pub struct fsw_event_type_filter {
-  pub flag: FswEventFlag
+  pub flag: fsw_event_flag
 }
 
 #[repr(C)]
 pub struct fsw_cmonitor_filter {
   pub text: *const c_char,
-  pub filter_type: FswFilterType,
+  pub filter_type: fsw_filter_type,
   pub case_sensitive: bool,
   pub extended: bool
 }
@@ -88,7 +88,7 @@ pub struct fsw_cmonitor_filter {
 pub struct fsw_cevent {
   pub path: *const c_char,
   pub evt_time: time_t,
-  pub flags: *const FswEventFlag,
+  pub flags: *const fsw_event_flag,
   pub flags_num: c_uint
 }
 
