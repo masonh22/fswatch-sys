@@ -136,9 +136,11 @@ pub struct FswMonitorFilter {
 }
 
 impl FswMonitorFilter {
-  pub fn new(text: String, filter_type: FswFilterType, case_sensitive: bool, extended: bool) -> Self {
+  pub fn new<S>(text: S, filter_type: FswFilterType, case_sensitive: bool, extended: bool) -> Self
+    where S: AsRef<str>
+  {
     FswMonitorFilter {
-      text: text,
+      text: text.as_ref().to_owned(),
       filter_type: filter_type,
       case_sensitive: case_sensitive,
       extended: extended
