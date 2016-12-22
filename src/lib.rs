@@ -130,8 +130,9 @@ pub struct FswMonitorFilter {
   pub text: String,
   /// The type of filter.
   pub filter_type: FswFilterType,
-  /// Whether the filter should be case sensitive.
+  /// Whether the regular expression in `text` should be case sensitive.
   pub case_sensitive: bool,
+  /// Whether the regular expression in `text` is an extended regular expression.
   pub extended: bool
 }
 
