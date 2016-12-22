@@ -93,6 +93,8 @@ fn invalid_handle_set_callback() {
 
 #[test]
 fn run_callback() {
+  // Get the cwd.
+  let dir = std::env::current_dir().unwrap();
   // Define the file name for this test.
   let file_name = "fsw_test_file";
 
@@ -100,18 +102,24 @@ fn run_callback() {
   let pair = Arc::new((Mutex::new(false), Condvar::new()));
   // Create clone for thread.
   let pair2 = pair.clone();
+  // Create clone for thread.
+  let dir2 = dir.clone();
+
+  let (tx, rx) = std::sync::mpsc::channel();
 
   // Get a handle to this thread.
   let handle = std::thread::spawn(move || {
     // Extract our pair.
     let &(ref lock, ref cvar) = &*pair2;
     // Create a session.
-    let session = FswSession::builder_paths(vec!["./"])
+    let session = FswSession::builder_paths(vec![dir2])
       // Filter for only our file name.
       .add_filter(FswMonitorFilter::new(file_name, FswFilterType::Include, true, false))
       // Reject all other files.
       .add_filter(FswMonitorFilter::new(".*", FswFilterType::Exclude, false, false))
       .build().unwrap();
+    // Send a signal to the main thread that we're ready for the file to be created.
+    tx.send(()).unwrap();
     // Use the iterator pattern but immediately break out of it. This will leave the monitor running
     // and accumulating events (as the C API provides no way to stop a monitor).
     for event in session {
@@ -125,8 +133,17 @@ fn run_callback() {
     unreachable!();
   });
 
+  // Generate the path for the file to create.
+  let mut file_path = dir.clone();
+  file_path.push(file_name);
+
+  // Wait for the signal before creating the file.
+  let _ = rx.recv().unwrap();
+
+  // Wait one second for the loop to begin. // FIXME: there is a better way for this
+  std::thread::sleep(std::time::Duration::from_secs(1));
+
   // Create the file for the thread to find the event for.
-  let file_path = format!("./{}", file_name);
   std::fs::File::create(&file_path).unwrap();
 
   // Wait for the thread for up to five seconds.
@@ -149,7 +166,4 @@ fn run_callback() {
   let event_file_name = path.file_name().unwrap().to_string_lossy();
   // Assert that the created file name matches the event's file name.
   assert_eq!(file_name, event_file_name);
-  // Assert that the IsFile flag is present in the event flags. Note that we cannot assert that the
-  // Created flag is present due to how fswatch works.
-  assert!(event.flags.contains(&FswEventFlag::IsFile));
 }
