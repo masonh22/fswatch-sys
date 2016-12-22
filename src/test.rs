@@ -1,7 +1,11 @@
-use {ffi, FswSession};
+use {ffi, FswSession, FswError, FswMonitorType, FswMonitorFilter, FswFilterType, FswEventFlag};
 
 fn get_default_session() -> FswSession {
   FswSession::default().unwrap()
+}
+
+fn create_sample_filter() -> FswMonitorFilter {
+  FswMonitorFilter::new("\\w+\\.txt$", FswFilterType::Include, false, false)
 }
 
 #[test]
@@ -19,47 +23,37 @@ fn create_and_destroy_session() {
 }
 
 #[test]
-fn add_path() {
-  let session = get_default_session();
-  session.add_path("./").unwrap();
+fn create_session_from_builder() {
+  FswSession::builder()
+    .add_path("./")
+    .property("test_name", "test_value")
+    .overflow(Some(true))
+    .monitor(FswMonitorType::SystemDefault)
+    .latency(Some(1.0))
+    .recursive(Some(true))
+    .directory_only(Some(false))
+    .follow_symlinks(Some(true))
+    .add_event_filter(FswEventFlag::Created)
+    .add_filter(create_sample_filter())
+    .build_callback(|events| println!("{:#?}", events))
+    .unwrap();
 }
 
 #[test]
-fn add_property() {
-  let session = get_default_session();
-  session.add_property("test_name", "test_value").unwrap();
-}
-
-#[test]
-fn set_allow_overflow() {
-  let session = get_default_session();
-  session.set_allow_overflow(true).unwrap();
-}
-
-#[test]
-fn set_callback() {
-  let session = get_default_session();
-  session.set_callback(|_| {
-    println!("Hi!");
-  }).unwrap();
-}
-
-#[test]
-#[should_panic]
 fn start_empty() {
-  get_default_session().start_monitor().unwrap();
+  assert_eq!(Err(FswError::MissingRequiredParameters), get_default_session().start_monitor());
 }
 
 #[test]
 fn start_without_callback() {
   let session = get_default_session();
   session.add_path("./").unwrap();
-  assert!(session.start_monitor().is_err());
+  assert_eq!(Err(FswError::MissingRequiredParameters), session.start_monitor());
 }
 
 #[test]
 fn start_without_path() {
   let session = get_default_session();
   session.set_callback(|_| println!("Hello")).unwrap();
-  assert!(session.start_monitor().is_err());
+  assert_eq!(Err(FswError::MissingRequiredParameters), session.start_monitor());
 }
