@@ -3,7 +3,6 @@
 //! See the [C API docs](http://emcrisostomo.github.io/fswatch/doc/1.9.3/libfswatch.html/libfswatch_8h.html).
 
 #![allow(non_camel_case_types)]
-#![feature(const_fn)]
 
 extern crate libc;
 #[macro_use]
