@@ -5,8 +5,6 @@
 #![allow(non_camel_case_types)]
 
 extern crate libc;
-#[macro_use]
-extern crate cfg_if;
 
 use libc::{c_int, c_uint, c_void, c_double, c_char, time_t};
 
@@ -38,7 +36,6 @@ extern "C" {
 
   pub fn fsw_start_monitor(handle: FSW_HANDLE) -> FSW_STATUS;
 
-  #[cfg(feature = "1_10_0")]
   pub fn fsw_stop_monitor(handle: FSW_HANDLE) -> FSW_STATUS;
 
   pub fn fsw_destroy_session(handle: FSW_HANDLE) -> FSW_STATUS;
@@ -50,42 +47,33 @@ extern "C" {
   pub fn fsw_set_verbose(verbose: bool);
 }
 
-cfg_if! {
-  if #[cfg(feature = "1_10_0")] {
-    pub enum FSW_SESSION {}
+pub enum FSW_SESSION {}
 
-    pub type FSW_HANDLE = *mut FSW_SESSION;
-    pub const FSW_INVALID_HANDLE: FSW_HANDLE = std::ptr::null_mut();
-  } else {
-    pub type FSW_HANDLE = c_int;
-    pub const FSW_INVALID_HANDLE: FSW_HANDLE = -1;
-  }
-}
+pub type FSW_HANDLE = *mut FSW_SESSION;
+pub const FSW_INVALID_HANDLE: FSW_HANDLE = std::ptr::null_mut();
+
 
 pub type FSW_STATUS = c_int;
 pub type FSW_CEVENT_CALLBACK = extern fn(events: *const fsw_cevent, event_num: c_uint, data: *mut c_void);
 
 pub const FSW_OK: FSW_STATUS = 0;
 pub const FSW_ERR_UNKNOWN_ERROR: FSW_STATUS = 1;
-pub const FSW_ERR_SESSION_UNKNOWN: FSW_STATUS = (1 << 1);
-pub const FSW_ERR_MONITOR_ALREADY_EXISTS: FSW_STATUS = (1 << 2);
-pub const FSW_ERR_MEMORY: FSW_STATUS = (1 << 3);
-pub const FSW_ERR_UNKNOWN_MONITOR_TYPE: FSW_STATUS = (1 << 4);
-pub const FSW_ERR_CALLBACK_NOT_SET: FSW_STATUS = (1 << 5);
-pub const FSW_ERR_PATHS_NOT_SET: FSW_STATUS = (1 << 6);
-pub const FSW_ERR_MISSING_CONTEXT: FSW_STATUS = (1 << 7);
-pub const FSW_ERR_INVALID_PATH: FSW_STATUS = (1 << 8);
-pub const FSW_ERR_INVALID_CALLBACK: FSW_STATUS = (1 << 9);
-pub const FSW_ERR_INVALID_LATENCY: FSW_STATUS = (1 << 10);
-pub const FSW_ERR_INVALID_REGEX: FSW_STATUS = (1 << 11);
-pub const FSW_ERR_MONITOR_ALREADY_RUNNING: FSW_STATUS = (1 << 12);
-pub const FSW_ERR_UNKNOWN_VALUE: FSW_STATUS = (1 << 13);
-pub const FSW_ERR_INVALID_PROPERTY: FSW_STATUS = (1 << 14);
+pub const FSW_ERR_SESSION_UNKNOWN: FSW_STATUS = 1 << 1;
+pub const FSW_ERR_MONITOR_ALREADY_EXISTS: FSW_STATUS = 1 << 2;
+pub const FSW_ERR_MEMORY: FSW_STATUS = 1 << 3;
+pub const FSW_ERR_UNKNOWN_MONITOR_TYPE: FSW_STATUS = 1 << 4;
+pub const FSW_ERR_CALLBACK_NOT_SET: FSW_STATUS = 1 << 5;
+pub const FSW_ERR_PATHS_NOT_SET: FSW_STATUS = 1 << 6;
+pub const FSW_ERR_MISSING_CONTEXT: FSW_STATUS = 1 << 7;
+pub const FSW_ERR_INVALID_PATH: FSW_STATUS = 1 << 8;
+pub const FSW_ERR_INVALID_CALLBACK: FSW_STATUS = 1 << 9;
+pub const FSW_ERR_INVALID_LATENCY: FSW_STATUS = 1 << 10;
+pub const FSW_ERR_INVALID_REGEX: FSW_STATUS = 1 << 11;
+pub const FSW_ERR_MONITOR_ALREADY_RUNNING: FSW_STATUS = 1 << 12;
+pub const FSW_ERR_UNKNOWN_VALUE: FSW_STATUS = 1 << 13;
+pub const FSW_ERR_INVALID_PROPERTY: FSW_STATUS = 1 << 14;
 
-#[repr(C)]
-pub struct fsw_event_type_filter {
-  pub flag: fsw_event_flag
-}
+pub type fsw_event_type_filter = fsw_event_flag;
 
 #[repr(C)]
 pub struct fsw_cmonitor_filter {
@@ -99,8 +87,7 @@ pub struct fsw_cmonitor_filter {
 pub struct fsw_cevent {
   pub path: *const c_char,
   pub evt_time: time_t,
-  pub flags: *const fsw_event_flag,
-  pub flags_num: c_uint
+  pub flags: fsw_event_flag
 }
 
 #[repr(u32)]
@@ -120,6 +107,12 @@ pub enum fsw_event_flag {
   IsSymLink = (1 << 11),
   Link = (1 << 12),
   Overflow = (1 << 13)
+}
+
+impl fsw_event_flag {
+  pub fn discriminant(&self) -> u32 {
+    unsafe { *<*const _>::from(self).cast::<u32>() }
+  }
 }
 
 #[repr(C)]
