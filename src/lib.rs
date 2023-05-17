@@ -5,8 +5,10 @@
 #![allow(non_camel_case_types)]
 
 extern crate libc;
+extern crate bitflags;
 
 use libc::{c_int, c_uint, c_void, c_double, c_char, time_t};
+use bitflags::bitflags;
 
 #[link(name = "fswatch")]
 extern "C" {
@@ -31,6 +33,8 @@ extern "C" {
   pub fn fsw_set_follow_symlinks(handle: FSW_HANDLE, follow_symlinks: bool) -> FSW_STATUS;
 
   pub fn fsw_add_event_type_filter(handle: FSW_HANDLE, event_type: fsw_event_type_filter) -> FSW_STATUS;
+
+  pub fn fsw_set_event_type_filters(handle: FSW_HANDLE, event_type: fsw_event_type_filter) -> FSW_STATUS;
 
   pub fn fsw_add_filter(handle: FSW_HANDLE, filter: fsw_cmonitor_filter) -> FSW_STATUS;
 
@@ -90,28 +94,25 @@ pub struct fsw_cevent {
   pub flags: fsw_event_flag
 }
 
-#[repr(u32)]
-pub enum fsw_event_flag {
-  NoOp = 0,
-  PlatformSpecific = 1,
-  Created = (1 << 1),
-  Updated = (1 << 2),
-  Removed = (1 << 3),
-  Renamed = (1 << 4),
-  OwnerModified = (1 << 5),
-  AttributeModified = (1 << 6),
-  MovedFrom = (1 << 7),
-  MovedTo = (1 << 8),
-  IsFile = (1 << 9),
-  IsDir = (1 << 10),
-  IsSymLink = (1 << 11),
-  Link = (1 << 12),
-  Overflow = (1 << 13)
-}
-
-impl fsw_event_flag {
-  pub fn discriminant(&self) -> u32 {
-    unsafe { *<*const _>::from(self).cast::<u32>() }
+bitflags! {
+  #[repr(C)]
+  #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+  pub struct fsw_event_flag: u32 {
+    const NoOp = 0;
+    const PlatformSpecific = 1;
+    const Created = 1 << 1;
+    const Updated = 1 << 2;
+    const Removed = 1 << 3;
+    const Renamed = 1 << 4;
+    const OwnerModified = 1 << 5;
+    const AttributeModified = 1 << 6;
+    const MovedFrom = 1 << 7;
+    const MovedTo = 1 << 8;
+    const IsFile = 1 << 9;
+    const IsDir = 1 << 10;
+    const IsSymLink = 1 << 11;
+    const Link = 1 << 12;
+    const Overflow = 1 << 13;
   }
 }
 

@@ -8,4 +8,5 @@ readme = "README.md"
 license = "MPL-2.0"
 
 [dependencies]
+bitflags = "2.2.1"
 libc = "0.2"
